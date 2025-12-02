@@ -88,8 +88,8 @@ export function extractTickers(text: string): string[] {
  * @returns boolean indicating if it's likely a valid ticker
  */
 export function isValidTicker(ticker: string): boolean {
-  // Must be 1-5 uppercase letters
-  if (!/^[A-Z]{1,5}$/.test(ticker)) {
+  // Must be 2-5 uppercase letters (matching the extraction pattern)
+  if (!/^[A-Z]{2,5}$/.test(ticker)) {
     return false;
   }
   

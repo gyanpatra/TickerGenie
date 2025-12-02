@@ -12,6 +12,24 @@ interface TranscriptSegment {
 }
 
 /**
+ * Decode HTML entities in a string
+ * Order matters to avoid double-decoding issues
+ */
+function decodeHtmlEntities(text: string): string {
+  // First decode numeric entities
+  let decoded = text.replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)));
+  // Then decode named entities (decode &amp; last to avoid double-decoding)
+  decoded = decoded.replace(/&lt;/g, '<');
+  decoded = decoded.replace(/&gt;/g, '>');
+  decoded = decoded.replace(/&quot;/g, '"');
+  decoded = decoded.replace(/&apos;/g, "'");
+  decoded = decoded.replace(/&nbsp;/g, ' ');
+  // Decode &amp; last to prevent double-decoding of other entities
+  decoded = decoded.replace(/&amp;/g, '&');
+  return decoded;
+}
+
+/**
  * Extract video ID from various YouTube URL formats
  */
 export function extractVideoId(url: string): string | null {
@@ -66,14 +84,9 @@ export function extractChannelId(url: string): string | null {
  */
 export async function fetchTranscript(videoId: string): Promise<string> {
   try {
-    // In production, use the youtube-transcript package:
-    // import { YoutubeTranscript } from 'youtube-transcript';
-    // const transcript = await YoutubeTranscript.fetchTranscript(videoId);
-    
-    // For now, we'll use a direct API approach
+    // Fetch the video page to get the initial data
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     
-    // Fetch the video page to get the initial data
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -88,17 +101,56 @@ export async function fetchTranscript(videoId: string): Promise<string> {
     const html = await response.text();
     
     // Extract caption tracks from the page data
-    const captionMatch = html.match(/"captions":\s*(\{[^}]+\})/);
+    // Look for the timedtext URL in the page source
+    const captionUrlMatch = html.match(/"captionTracks":\s*\[(.*?)\]/s);
     
-    if (!captionMatch) {
+    if (!captionUrlMatch) {
       throw new Error('No captions available for this video');
     }
 
-    // In a real implementation, you would parse the caption URL and fetch the transcript
-    // For this simplified version, we'll return a placeholder
-    // The actual implementation should use the youtube-transcript package
+    // Parse caption tracks to find English captions
+    const captionData = captionUrlMatch[1];
+    const baseUrlMatch = captionData.match(/"baseUrl":\s*"([^"]+)"/);
     
-    throw new Error('Transcript extraction requires youtube-transcript package');
+    if (!baseUrlMatch) {
+      throw new Error('Could not find caption URL');
+    }
+
+    // Decode the URL (it's escaped in the JSON)
+    const captionUrl = baseUrlMatch[1].replace(/\\u0026/g, '&').replace(/\\\//g, '/');
+    
+    // Fetch the actual transcript
+    const transcriptResponse = await fetch(captionUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      },
+    });
+
+    if (!transcriptResponse.ok) {
+      throw new Error(`Failed to fetch transcript: ${transcriptResponse.status}`);
+    }
+
+    const transcriptXml = await transcriptResponse.text();
+    
+    // Extract text from XML transcript
+    // The transcript is in XML format with <text> tags
+    const textMatches = transcriptXml.matchAll(/<text[^>]*>([^<]*)<\/text>/g);
+    const transcriptParts: string[] = [];
+    
+    for (const match of textMatches) {
+      // Decode HTML entities - use a helper function to avoid double-escaping issues
+      const text = decodeHtmlEntities(match[1]).trim();
+      
+      if (text) {
+        transcriptParts.push(text);
+      }
+    }
+
+    if (transcriptParts.length === 0) {
+      throw new Error('Transcript is empty');
+    }
+
+    return transcriptParts.join(' ');
   } catch (error) {
     console.error(`Error fetching transcript for ${videoId}:`, error);
     throw error;
