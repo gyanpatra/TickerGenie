@@ -1,0 +1,25 @@
+{
+  "name": "tickergenie-backend",
+  "version": "1.0.0",
+  "description": "TickerGenie AWS Lambda backend",
+  "main": "functions/index.js",
+  "scripts": {
+    "build": "tsc",
+    "deploy": "npm run build && aws cloudformation deploy --template-file template.yaml --stack-name tickergenie-backend --capabilities CAPABILITY_IAM",
+    "test": "jest"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1692.0",
+    "youtube-transcript": "^1.2.1",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/node": "^22.10.1",
+    "@types/node-fetch": "^2.6.12",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,164 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: TickerGenie - YouTube Stock Analyst Video Analyzer Backend
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: nodejs18.x
+    MemorySize: 256
+    Environment:
+      Variables:
+        AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
+        SES_FROM_EMAIL: !Ref SESFromEmail
+  Api:
+    Cors:
+      AllowMethods: "'GET,POST,OPTIONS'"
+      AllowHeaders: "'Content-Type'"
+      AllowOrigin: "'*'"
+
+Parameters:
+  SESFromEmail:
+    Type: String
+    Default: noreply@tickergenie.com
+    Description: Email address to send emails from (must be verified in SES)
+
+Resources:
+  # API Gateway
+  TickerGenieApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Name: TickerGenieAPI
+      Description: TickerGenie REST API
+
+  # Analyze Video Function
+  AnalyzeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: tickergenie-analyze
+      Handler: dist/functions/analyze.handler
+      Description: Analyzes YouTube video transcripts for stock tickers
+      Timeout: 60
+      Events:
+        Analyze:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TickerGenieApi
+            Path: /analyze
+            Method: POST
+
+  # Latest Video Function
+  LatestVideoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: tickergenie-latest-video
+      Handler: dist/functions/latestVideo.handler
+      Description: Gets the latest video from a YouTube channel
+      Timeout: 30
+      Events:
+        LatestVideo:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TickerGenieApi
+            Path: /latest-video
+            Method: POST
+
+  # Email Function
+  EmailFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: tickergenie-email
+      Handler: dist/functions/email.handler
+      Description: Sends analysis results via email
+      Timeout: 30
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: '*'
+      Events:
+        Email:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TickerGenieApi
+            Path: /email
+            Method: POST
+
+  # S3 Bucket for static website hosting
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub tickergenie-web-${AWS::AccountId}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+
+  # S3 Bucket Policy
+  WebsiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebsiteBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub ${WebsiteBucket.Arn}/*
+
+  # CloudFront Distribution (optional, for HTTPS and caching)
+  WebsiteDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName: !GetAtt WebsiteBucket.RegionalDomainName
+            Id: S3Origin
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+        Enabled: true
+        DefaultRootObject: index.html
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        PriceClass: PriceClass_100
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub https://${TickerGenieApi}.execute-api.${AWS::Region}.amazonaws.com/prod
+
+  WebsiteUrl:
+    Description: S3 Website URL
+    Value: !GetAtt WebsiteBucket.WebsiteURL
+
+  CloudFrontUrl:
+    Description: CloudFront Distribution URL
+    Value: !Sub https://${WebsiteDistribution.DomainName}
