@@ -31,7 +31,7 @@ export const AnalystDropdown: React.FC<AnalystDropdownProps> = ({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Select YouTube Analyst</Text>
+      <Text style={styles.label}>Select Stock Analyst Channel</Text>
       <TouchableOpacity 
         style={styles.dropdown}
         onPress={() => setIsOpen(true)}

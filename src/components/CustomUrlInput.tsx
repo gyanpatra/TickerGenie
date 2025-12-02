@@ -9,17 +9,19 @@ interface CustomUrlInputProps {
   visible?: boolean;
 }
 
+const DEFAULT_CHANNEL_URL = 'https://www.youtube.com/@morningstar';
+
 export const CustomUrlInput: React.FC<CustomUrlInputProps> = ({
   value,
   onChangeText,
-  placeholder = 'Enter YouTube video URL',
+  placeholder = DEFAULT_CHANNEL_URL,
   visible = true,
 }) => {
   if (!visible) return null;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Custom YouTube URL</Text>
+      <Text style={styles.label}>Or enter a YouTube analyst channel URL</Text>
       <TextInput
         style={styles.input}
         value={value}
@@ -30,9 +32,10 @@ export const CustomUrlInput: React.FC<CustomUrlInputProps> = ({
         autoCorrect={false}
         keyboardType="url"
         accessibilityLabel="Custom YouTube URL input"
+        defaultValue={DEFAULT_CHANNEL_URL}
       />
       <Text style={styles.hint}>
-        Enter a YouTube video URL to analyze
+        Enter a YouTube channel URL to analyze the latest video
       </Text>
     </View>
   );

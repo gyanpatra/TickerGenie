@@ -6,17 +6,29 @@
   "scripts": {
     "build": "tsc",
     "deploy": "npm run build && aws cloudformation deploy --template-file template.yaml --stack-name tickergenie-backend --capabilities CAPABILITY_IAM",
-    "test": "jest"
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "start": "ts-node server.ts",
+    "lint": "eslint . --ext .ts"
   },
   "dependencies": {
     "aws-sdk": "^2.1692.0",
-    "youtube-transcript": "^1.2.1",
-    "node-fetch": "^2.7.0"
+    "node-fetch": "^2.7.0",
+    "youtube-transcript": "^1.2.1"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.145",
+    "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
     "@types/node": "^22.10.1",
     "@types/node-fetch": "^2.6.12",
+    "@types/supertest": "^6.0.3",
+    "express": "^5.2.1",
+    "jest": "^30.2.0",
+    "supertest": "^7.1.4",
+    "ts-jest": "^29.4.6",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   },
   "engines": {

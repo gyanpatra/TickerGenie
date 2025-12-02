@@ -43,22 +43,17 @@ export const DEFAULT_ANALYSTS: YouTubeAnalyst[] = [
   {
     id: 'morningstar',
     name: 'Morningstar',
-    channelUrl: 'https://www.youtube.com/@MorningstarInc',
+    channelUrl: 'https://www.youtube.com/@morningstar',
   },
   {
-    id: 'seekingalpha',
-    name: 'Seeking Alpha',
-    channelUrl: 'https://www.youtube.com/@SeekingAlpha',
+    id: 'markroussin',
+    name: 'Mark Roussin CPA',
+    channelUrl: 'https://www.youtube.com/@MarkRoussinCPA',
   },
   {
-    id: 'motley-fool',
-    name: 'The Motley Fool',
-    channelUrl: 'https://www.youtube.com/@MotleyFool',
-  },
-  {
-    id: 'cnbc',
-    name: 'CNBC',
-    channelUrl: 'https://www.youtube.com/@CNBC',
+    id: 'nolangouveia',
+    name: 'Nolan Gouveia',
+    channelUrl: 'https://www.youtube.com/@NolanGouveia',
   },
   {
     id: 'custom',
