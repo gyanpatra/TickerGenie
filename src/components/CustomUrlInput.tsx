@@ -32,7 +32,6 @@ export const CustomUrlInput: React.FC<CustomUrlInputProps> = ({
         autoCorrect={false}
         keyboardType="url"
         accessibilityLabel="Custom YouTube URL input"
-        defaultValue={DEFAULT_CHANNEL_URL}
       />
       <Text style={styles.hint}>
         Enter a YouTube channel URL to analyze the latest video

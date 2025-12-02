@@ -159,9 +159,10 @@ describe('extractTickers', () => {
     it('should reject single letter tickers that are not in known list', () => {
       const text = 'A B C D E single letters.';
       const tickers = extractTickers(text);
-      // Single letter matches are rejected by the 2-5 regex
-      expect(tickers).not.toContain('A');
-      expect(tickers).not.toContain('B');
+      // Single letter matches are filtered out unless they're known tickers
+      expect(tickers).not.toContain('A'); // Excluded word
+      expect(tickers).not.toContain('B'); // Not a known ticker
+      // But known single-letter tickers like C (Citigroup) would be included
     });
   });
 
@@ -233,8 +234,19 @@ describe('isValidTicker', () => {
     expect(isValidTicker('Aapl')).toBe(false);
   });
 
-  it('should return false for strings too long or too short', () => {
-    expect(isValidTicker('A')).toBe(false);
+  it('should return false for unknown single-letter strings', () => {
+    // Unknown single letters are too short/ambiguous
+    expect(isValidTicker('B')).toBe(false);
+    expect(isValidTicker('X')).toBe(false);
+  });
+
+  it('should return true for known single-letter tickers', () => {
+    // Known single-letter tickers like V (Visa), C (Citigroup) are valid
+    expect(isValidTicker('V')).toBe(true);
+    expect(isValidTicker('C')).toBe(true);
+  });
+
+  it('should return false for strings too long', () => {
     expect(isValidTicker('TOOLONG')).toBe(false);
   });
 

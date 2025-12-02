@@ -1,6 +1,6 @@
 /**
  * Ticker Extraction Utility
- * Extracts 2-5 letter stock tickers from text
+ * Extracts 1-5 letter stock tickers from text (supports single-letter known tickers like V, C)
  */
 
 // Common stock ticker patterns - 1 to 5 uppercase letters (to support single-letter known tickers like V)
@@ -64,7 +64,7 @@ export function extractTickers(text: string): string[] {
   const tickers = new Set<string>();
   
   for (const match of matches) {
-    // Check if it's a known ticker (include it)
+    // Check if it's a known ticker (include it, even single-letter like V, C)
     if (KNOWN_TICKERS.has(match)) {
       tickers.add(match);
       continue;
@@ -75,7 +75,7 @@ export function extractTickers(text: string): string[] {
       continue;
     }
     
-    // Basic validation - must be 2-5 chars
+    // For unknown tickers, require 2-5 chars (single letters are too ambiguous)
     if (match.length >= 2 && match.length <= 5) {
       tickers.add(match);
     }
@@ -90,14 +90,19 @@ export function extractTickers(text: string): string[] {
  * @returns boolean indicating if it's likely a valid ticker
  */
 export function isValidTicker(ticker: string): boolean {
-  // Must be 2-5 uppercase letters (matching the extraction pattern)
-  if (!/^[A-Z]{2,5}$/.test(ticker)) {
+  // Must be 1-5 uppercase letters
+  if (!/^[A-Z]{1,5}$/.test(ticker)) {
     return false;
   }
   
-  // Known tickers are always valid
+  // Known tickers are always valid (including single-letter like V, C)
   if (KNOWN_TICKERS.has(ticker)) {
     return true;
+  }
+  
+  // For unknown tickers, require at least 2 characters
+  if (ticker.length < 2) {
+    return false;
   }
   
   // Excluded words are not valid
