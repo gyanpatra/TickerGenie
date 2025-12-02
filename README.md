@@ -15,11 +15,10 @@ TickerGenie is a cross-platform app (iOS, Android, Web) that analyzes YouTube st
 
 ## Default Analysts
 
-- Morningstar (default)
-- Seeking Alpha
-- The Motley Fool
-- CNBC
-- Custom URL (enter any YouTube video URL)
+- Morningstar (default) - https://www.youtube.com/@morningstar
+- Mark Roussin CPA - https://www.youtube.com/@MarkRoussinCPA
+- Nolan Gouveia - https://www.youtube.com/@NolanGouveia
+- Custom URL (enter any YouTube channel URL)
 
 ## Tech Stack
 
@@ -27,12 +26,15 @@ TickerGenie is a cross-platform app (iOS, Android, Web) that analyzes YouTube st
 - React Native (Expo)
 - TypeScript
 - React Native Web (for web support)
+- Jest + React Testing Library (testing)
 
 ### Backend
-- AWS Lambda (Node.js)
+- Node.js with Express (local development)
+- AWS Lambda (production)
 - AWS API Gateway
 - AWS SES (for emails)
 - AWS S3 + CloudFront (for static hosting)
+- Jest + Supertest (testing)
 
 ## Project Structure
 
@@ -40,6 +42,7 @@ TickerGenie is a cross-platform app (iOS, Android, Web) that analyzes YouTube st
 TickerGenie/
 ├── App.tsx                 # Main app entry point
 ├── src/
+│   ├── __tests__/          # Frontend tests
 │   ├── components/         # Reusable UI components
 │   │   ├── ActionButton.tsx
 │   │   ├── AnalystDropdown.tsx
@@ -55,7 +58,8 @@ TickerGenie/
 │   │   └── colors.ts
 │   └── types/             # TypeScript types
 │       └── index.ts
-├── backend/               # AWS Lambda backend
+├── backend/               # Node.js backend
+│   ├── __tests__/         # Backend tests
 │   ├── functions/         # Lambda handlers
 │   │   ├── analyze.ts
 │   │   ├── email.ts
@@ -65,9 +69,12 @@ TickerGenie/
 │   │   ├── tickerExtractor.ts
 │   │   ├── yahooFinance.ts
 │   │   └── youtubeService.ts
+│   ├── server.ts          # Express server for local dev
 │   ├── template.yaml      # AWS SAM template
 │   ├── package.json
 │   └── tsconfig.json
+├── .github/workflows/     # GitHub Actions CI
+│   └── ci.yml
 └── assets/                # App icons and images
 ```
 
@@ -84,7 +91,7 @@ TickerGenie/
 
 1. Install dependencies:
    ```bash
-   npm install
+   npm install --legacy-peer-deps
    ```
 
 2. Start the development server:
@@ -99,7 +106,12 @@ TickerGenie/
    npm run android
    ```
 
-### Backend Setup
+3. Run tests:
+   ```bash
+   npm test
+   ```
+
+### Backend Setup (Local Development)
 
 1. Navigate to backend directory:
    ```bash
@@ -107,12 +119,31 @@ TickerGenie/
    npm install
    ```
 
-2. Build TypeScript:
+2. Start the local server:
+   ```bash
+   npm run start
+   ```
+   This starts an Express server on port 3001.
+
+3. Run tests:
+   ```bash
+   npm test
+   ```
+
+4. Build TypeScript:
    ```bash
    npm run build
    ```
 
-3. Deploy to AWS:
+### Backend Setup (AWS Deployment)
+
+1. Build the backend:
+   ```bash
+   cd backend
+   npm run build
+   ```
+
+2. Deploy to AWS:
    ```bash
    aws cloudformation deploy \
      --template-file template.yaml \
@@ -120,69 +151,134 @@ TickerGenie/
      --capabilities CAPABILITY_IAM
    ```
 
-4. Update the API URL in `src/services/api.ts` with your API Gateway endpoint.
+3. Update the API URL in `src/services/api.ts` with your API Gateway endpoint.
 
 ## Environment Variables
 
 ### Frontend
-- `EXPO_PUBLIC_API_URL`: Backend API URL
+- `EXPO_PUBLIC_API_URL`: Backend API URL (default: `https://api.tickergenie.com`)
+
+### Backend (Local Development)
+- `PORT`: Server port (default: 3001)
+- `NODE_ENV`: Environment (development/production)
 
 ### Backend (AWS Lambda)
 - `AWS_REGION`: AWS region
 - `SES_FROM_EMAIL`: Verified SES email address for sending emails
 
-## AWS Setup
-
-1. **SES Configuration**: Verify your sender email address in AWS SES
-2. **API Gateway**: Created automatically via SAM template
-3. **S3 + CloudFront**: For static web hosting
-
 ## API Endpoints
 
-### POST /analyze
-Analyzes a YouTube video transcript for stock tickers.
+### POST /api/analyze-channel
+Analyzes the latest video from a YouTube channel for stock tickers.
 
 **Request:**
 ```json
 {
-  "videoUrl": "https://www.youtube.com/watch?v=..."
+  "channelUrl": "https://www.youtube.com/@morningstar"
 }
 ```
 
 **Response:**
 ```json
 {
-  "id": "analysis_...",
-  "videoUrl": "...",
-  "videoTitle": "...",
-  "channelName": "...",
-  "extractedTickers": ["AAPL", "MSFT", "NVDA"],
-  "tickerRatings": [...],
-  "topPicks": [...],
-  "analysisDate": "..."
+  "channelUrl": "https://www.youtube.com/@morningstar",
+  "channelName": "Morningstar",
+  "latestVideoId": "abc123",
+  "latestVideoTitle": "Top Stock Picks for 2024",
+  "tickers": ["AAPL", "MSFT", "NVDA"],
+  "topTickers": [
+    { "ticker": "AAPL", "rating": "Buy", "source": "Yahoo Finance" },
+    { "ticker": "MSFT", "rating": "Strong Buy", "source": "Yahoo Finance" }
+  ]
 }
 ```
 
-### POST /latest-video
-Gets the latest video URL from a YouTube channel.
-
-**Request:**
-```json
-{
-  "channelUrl": "https://www.youtube.com/@MorningstarInc"
-}
-```
-
-### POST /email
+### POST /api/email-results
 Sends analysis results via email.
 
 **Request:**
 ```json
 {
   "email": "user@example.com",
-  "results": { ... }
+  "analysis": {
+    "channelUrl": "...",
+    "channelName": "...",
+    "latestVideoTitle": "...",
+    "tickers": ["AAPL", "MSFT", ...],
+    "topTickers": [
+      { "ticker": "AAPL", "rating": "Buy", "source": "Yahoo Finance" }
+    ]
+  }
 }
 ```
+
+**Response:**
+```json
+{
+  "message": "Email sent successfully",
+  "messageId": "..."
+}
+```
+
+### Legacy Endpoints (for backwards compatibility)
+
+- `POST /analyze` - Analyze a video URL directly
+- `POST /latest-video` - Get latest video from a channel
+- `POST /email` - Send email with results
+
+## Testing
+
+### Frontend Tests
+```bash
+npm test              # Run all tests
+npm run test:watch    # Watch mode
+npm run test:coverage # Coverage report
+```
+
+### Backend Tests
+```bash
+cd backend
+npm test              # Run all tests
+npm run test:watch    # Watch mode
+npm run test:coverage # Coverage report
+```
+
+## Building for Production
+
+### Web Build
+```bash
+npx expo export --platform web
+```
+The web build will be in the `dist/` directory. Deploy to S3 + CloudFront.
+
+### iOS/Android Build
+Use Expo EAS Build:
+```bash
+# Install EAS CLI
+npm install -g eas-cli
+
+# Configure EAS
+eas build:configure
+
+# Build for iOS
+eas build --platform ios
+
+# Build for Android
+eas build --platform android
+```
+
+## AWS Configuration
+
+### SES Setup
+1. Verify your sender email address in AWS SES
+2. If in sandbox mode, also verify recipient addresses
+3. Request production access for unlimited sending
+
+### S3 + CloudFront Setup
+1. Create an S3 bucket for static hosting
+2. Configure CloudFront distribution with S3 origin
+3. Update bucket policy for public read access
+4. Deploy web build to S3
 
 ## License
 
